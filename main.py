@@ -5,7 +5,7 @@ File: main
 
 Developer: Stanislav Ermokhin
 
-Version: 0.0.1
+Version: 1.0
 """
 
 import json
@@ -14,14 +14,17 @@ from time import time
 
 from PIL import Image
 
-ATTRIBUTES = {'hat', 'gradient_vertical', 'gradient_horizontal',
-              'watch', 'necklace', 'roses_around',
-              }
+ATTRIBUTES_GROUNDHOG = {'hat', 'gradient_vertical', 'gradient_horizontal',
+                        'watch', 'necklace', 'necklace_pendant',
+                        'roses_around'}
 
 with open('colors.data') as x:
     y = json.load(x)
 
 COLORS = list(y.keys())
+
+
+# len(COLORS) = 2331
 
 
 def olympic_rings():
@@ -111,10 +114,11 @@ def main(width, height, pixels):
 
     img = Image.new('RGBA', (width, height))
     img.putdata(pixels)
-    img.save(f'image_{str(int(time()))}.png')
+    img = img.resize(size=(1920, 1920), resample=Image.NEAREST)
+    img.save(f'images/image_{str(int(time()))}.png')
 
 
-def get_groundhog_pic_pixels(filename='groundhog.png'):
+def get_groundhog_pic_pixels(filename='samples/groundhog.png'):
     """
     Open 'groundhog.png' with PIL, convert to pixel RGBA-values as [(a, b, c, d), ..., (..., ..., ..., ...)]
 
@@ -122,7 +126,7 @@ def get_groundhog_pic_pixels(filename='groundhog.png'):
     :return: dict
     """
 
-    im = Image.open('groundhog.png', 'r')
+    im = Image.open('newsamples/groundhog.png', 'r')
     return_lst = list(im.getdata())
 
     return {'pixels': return_lst, 'width': im.width, 'height': im.height}
@@ -138,18 +142,18 @@ def gradient_pixel_plate_vertical(width, height, col1, col2):
     :return: list
     """
 
-    base = Image.new('RGB', (width, height), col1)
-    top = Image.new('RGB', (width, height), col2)
+    base = Image.new('RGBA', (width, height), col1)
+    top = Image.new('RGBA', (width, height), col2)
     mask = Image.new('L', (width, height))
     mask_data = list()
 
-    for y in range(height):
-        mask_data.extend([int(255 * (y / height))] * width)
+    for z in range(height):
+        mask_data.extend([int(255 * (z / height))] * width)
 
     mask.putdata(mask_data)
     base.paste(top, (0, 0), mask)
 
-    return list(base.convert(mode='RGBA').getdata())
+    return list(base.getdata())
 
 
 if __name__ == '__main__':
