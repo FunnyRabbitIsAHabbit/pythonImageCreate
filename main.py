@@ -10,52 +10,34 @@ Version: 1.0
 
 import json
 import random
-from time import time
+from statistics import mean
 
-from PIL import Image
+from PIL import Image, ImageColor
 
-ATTRIBUTES_GROUNDHOG = {'hat', 'gradient_vertical', 'gradient_horizontal',
-                        'watch', 'necklace', 'necklace_pendant',
-                        'roses_around'}
+ATTRIBUTES_GROUNDHOG = {'tux', 'hat_baseball', 'hat_flat', 'hat_top',
+                        'hat_wide', 'gradient', 'watch',
+                        'necklace', 'necklace_pendant',
+                        'roses_around_left', 'roses_around_right'}
+
+TRANSPARENT = (0, 0, 0, 0)
+BLACK = (255, 255, 255, 255)
+
+attributes_compatibility = {x: [y for y in ATTRIBUTES_GROUNDHOG
+                                if 'hat' not in y]
+                            for x in ATTRIBUTES_GROUNDHOG
+                            if 'hat' in x}
+attributes_compatibility.update({x: [y for y in ATTRIBUTES_GROUNDHOG
+                                     if 'necklace' not in y]
+                                 for x in ATTRIBUTES_GROUNDHOG
+                                 if 'necklace' in x})
 
 with open('colors.data') as x:
     y = json.load(x)
 
-COLORS = list(y.keys())
+colors = list(y.keys())
 
 
-# len(COLORS) = 2331
-
-
-def olympic_rings():
-    """Create list of pixels for field 50x50
-    corresponding to Olympic rings depiction (in 1-dimensional array)
-
-    :return tuple"""
-
-    tops_and_bottoms1 = [range(15, 19), range(24, 28), range(33, 37)]
-    tops_and_bottoms2 = [range(15, 19), range(25, 29)]
-    lefts_and_rights = range(22, 26)
-    z_range = (0, 7, 9, 16, 18, 25)
-    d_range = (0, 7, 10, 17)
-    diag_dots1 = (14, 19, 23, 28, 32, 37)
-    diag_dots2 = (14, 19, 24, 29)
-    x_base = [(20, y) for y in (x for item in tops_and_bottoms1 for x in item)]
-    x_base.extend(((21, y) for y in diag_dots1))
-    x_base.extend(((24, y + 4) for y in (x for item in tops_and_bottoms2 for x in item)))
-    x_base.extend(((26, y) for y in diag_dots1))
-    x_base.extend(((27, y) for y in (x for item in tops_and_bottoms1 for x in item)))
-    x_base.extend(((25, y + 4) for y in diag_dots2))
-    x_base.extend(((31, y + 4) for y in (x for item in tops_and_bottoms2 for x in item)))
-    x_base.extend(((30, y + 4) for y in diag_dots2))
-    for z in z_range:
-        x_base.extend(((y, 13 + z) for y in lefts_and_rights))
-    for d in d_range:
-        x_base.extend(((y + 4, 13 + d + 4) for y in lefts_and_rights))
-
-    base = [50 * item[0] + item[1] - 1 for item in x_base]
-
-    return 50, 50, None, base
+# len(colors) = 2331
 
 
 def change_background(base_pic, new_pixels, find_pixel=None):
@@ -83,30 +65,7 @@ def change_background(base_pic, new_pixels, find_pixel=None):
     return base_pic
 
 
-def old_main(width=None, height=None, pixel_list=None, base_picture_list=None):
-    """not Main function
-
-    :return: None
-    """
-
-    width = width or 50
-    height = height or width
-    base_picture_list = base_picture_list or [(None, None)]
-    white_rgba_tuple = (250, 250, 250, 250)
-    black_rgba_tuple = (0, 0, 0, 250)
-    default_rgba_tuple = black_rgba_tuple
-    transparent_rgba_tuple = (0, 0, 0, 0)
-    pixel_list = pixel_list or [transparent_rgba_tuple
-                                for _ in range(width)
-                                for _ in range(height)]
-    for coordinate in base_picture_list:
-        pixel_list[coordinate] = default_rgba_tuple
-    img = Image.new('RGBA', (width, height))
-    img.putdata(pixel_list)
-    img.save(f'image_{str(int(time()))}.png')
-
-
-def main(width, height, pixels):
+def main(width, height, pixels, name):
     """Main function
 
     :return: None
@@ -115,10 +74,161 @@ def main(width, height, pixels):
     img = Image.new('RGBA', (width, height))
     img.putdata(pixels)
     img = img.resize(size=(1920, 1920), resample=Image.NEAREST)
-    img.save(f'images/image_{str(int(time()))}.png')
+    img.save(f'images/{name}.png')
 
 
-def get_groundhog_pic_pixels(filename='samples/groundhog.png'):
+def choose_background(base, color1, gradient=False, color2=None):
+    """
+
+    :param base: dict
+    :param color1: str
+    :param gradient: bool (default False)
+    :param color2: str (optional)
+    :return: dict (base_with_background)
+    """
+
+    if gradient:
+        gradient_field = gradient_pixel_plate_vertical(col1=color1,
+                                                       col2=color2,
+                                                       width=base['width'],
+                                                       height=base['height'])
+        base['pixels'] = change_background(base['pixels'],
+                                           gradient_field)
+
+    else:
+        base['pixels'] = change_background(base['pixels'],
+                                           color1)
+
+    return base
+
+
+def set_attributes(base_with_background, attributes_pixels):
+    """
+
+    :param base_with_background: dict (generated by 'choose_background')
+    :param attributes_pixels: list (all attributes inplace)
+    :return: dict (picture to be resized and saved)
+    """
+
+    to_return = base_with_background
+
+    for i in range(len(attributes_pixels)):
+        if attributes_pixels[i] != TRANSPARENT:
+            to_return['pixels'][i] = attributes_pixels[i]
+
+    return to_return
+
+
+def generate_picture(name, base_with_background, attributes_pixels):
+    base_with_attributes = set_attributes(base_with_background,
+                                          attributes_pixels)
+    main(name=name,
+         **base_with_attributes)
+
+
+def restrictions(pixel_main, pixel_in_test):
+    """
+
+    :param pixel_main: tuple
+    :param pixel_in_test: tuple
+    :return: bool
+    """
+
+    is_restricted = False
+    pixel_main = list(pixel_main)
+    pixel_in_test = list(pixel_in_test)
+    pixel_in_test.pop(-1)
+    pixel_main.pop(-1)
+
+    if not (pixel_main[0] == pixel_main[1] == pixel_main[2]):
+        maximum = max(pixel_main)
+        minimum = min(pixel_main)
+        maximum_test = max(pixel_in_test)
+        minimum_test = min(pixel_in_test)
+        if pixel_in_test.index(minimum_test) == pixel_main.index(minimum) and \
+                pixel_in_test.index(maximum_test) == pixel_main.index(maximum) and \
+                mean(pixel_in_test) <= mean(pixel_main):
+            is_restricted = True
+    else:
+        if pixel_in_test[0] == pixel_in_test[1] == pixel_in_test[2]:
+            is_restricted = True
+
+    return is_restricted
+
+
+def test_for_multiple_colors(pixels):
+    """
+
+    :param pixels: list of pixels as [(r, g, b, a), ...]
+    :return: bool, list
+    """
+
+    bool_multiple = False
+    pixels_set = set(pixels)
+    if len(pixels_set) > 2 and TRANSPARENT in pixels_set or \
+            len(pixels_set) > 1 and TRANSPARENT not in pixels_set:
+        bool_multiple = True
+
+    pixels_set.discard(TRANSPARENT)
+
+    return bool_multiple, list(pixels_set)
+
+
+def random_change_color(pixel):
+    """
+
+    :param pixel: tuple
+    :return: tuple
+    """
+
+    color = random.sample(colors, 1)[0]
+    new_pixel = list(ImageColor.getrgb(color))
+    new_pixel.extend([255])
+
+    return tuple(new_pixel)
+
+
+def random_color_set(attribute_pixels):
+    """
+
+    :param attribute_pixels: list
+    :return: list-||-
+    """
+
+    tested = test_for_multiple_colors(attribute_pixels)
+
+    if not tested[0]:
+        colors_to_change = tested[1]
+        changes = dict()
+        for pixel in colors_to_change:
+            color = random_change_color(pixel)
+            changes[pixel] = color
+
+        for i in range(len(attribute_pixels)):
+            if attribute_pixels[i] != TRANSPARENT:
+                attribute_pixels[i] = changes[attribute_pixels[i]]
+
+    else:
+        try:
+            colors_to_change = tested[1]
+            changes = dict()
+            for pixel in colors_to_change:
+                color = TRANSPARENT
+                while not restrictions(pixel, color):
+                    color = random_change_color(pixel)
+                    changes[pixel] = color
+
+            for i in range(len(attribute_pixels)):
+                if attribute_pixels[i] != TRANSPARENT and \
+                        attribute_pixels[i] != BLACK:
+                    attribute_pixels[i] = changes[attribute_pixels[i]]
+        except KeyError as e:
+            print(e)
+
+    return attribute_pixels
+
+
+def get_pic(filename='newsamples/groundhog.png'):
     """
     Open 'groundhog.png' with PIL, convert to pixel RGBA-values as [(a, b, c, d), ..., (..., ..., ..., ...)]
 
@@ -126,7 +236,7 @@ def get_groundhog_pic_pixels(filename='samples/groundhog.png'):
     :return: dict
     """
 
-    im = Image.open('newsamples/groundhog.png', 'r')
+    im = Image.open(filename, 'r')
     return_lst = list(im.getdata())
 
     return {'pixels': return_lst, 'width': im.width, 'height': im.height}
@@ -156,14 +266,78 @@ def gradient_pixel_plate_vertical(width, height, col1, col2):
     return list(base.getdata())
 
 
-if __name__ == '__main__':
-    x = get_groundhog_pic_pixels()
-    col1, col2 = random.sample(COLORS, 2)
-    gradient_field = gradient_pixel_plate_vertical(col1=col1,
-                                                   col2=col2,
-                                                   width=x['width'],
-                                                   height=x['height'])
-    x['pixels'] = change_background(x['pixels'],
-                                    gradient_field)
+def combine_attributes(collection):
+    """
 
-    main(**x)
+    :param collection: list of lists
+    :return: list
+    """
+
+    try:
+
+        to_return = collection[0]
+
+        for lst in collection:
+            for i in range(len(to_return)):
+                if lst[i] != TRANSPARENT:
+                    to_return[i] = lst[i]
+
+        return to_return
+
+    except IndexError:
+        pass
+
+
+if __name__ == '__main__':
+    y = get_pic()
+
+    atts = list()
+    n = 10
+    n_pictures = 10
+    for _ in range(n):
+        for i in range(1, len(ATTRIBUTES_GROUNDHOG) + 1):
+            samp = random.sample(ATTRIBUTES_GROUNDHOG, i)
+            atts.append(samp)
+
+    atts = random.sample(atts, n_pictures)
+
+    for lst in atts:
+        while len([x for x in lst
+                   if 'hat' in x]) >= 2:
+            for item in [x for x in lst
+                               if 'hat' in x]:
+                lst.pop(lst.index(item))
+        while len([x for x in lst
+                   if 'necklace' in x]) >= 2:
+            for item in [x for x in lst
+                               if 'necklace' in x]:
+                lst.pop(lst.index(item))
+
+    for a in range(len(atts)):
+        if 'tux' in atts[a]:
+            if atts[a][-1] != 'tux':
+                i1, i2 = atts[a].index('tux'), -1
+                atts[a][i2], atts[a][i1] = atts[a][i1], atts[a][i2]
+        collected_attributes = list()
+        if 'gradient_vertical' not in atts[a]:
+            color = random.sample(colors, 2)[0]
+            base_with_back = choose_background(y, color1=color)
+
+        else:
+            col1, col2 = random.sample(colors, 2)
+            base_with_back = choose_background(y, gradient=True,
+                                               color1=col1, color2=col2)
+
+        for attribute in atts[a]:
+            if 'gradient' not in attribute:
+                attribute_pic_dict = get_pic(f'newsamples/{attribute}.png')
+                if 'tux' not in attribute:
+                    to_collect = random_color_set(attribute_pic_dict['pixels'])
+                else:
+                    to_collect = attribute_pic_dict['pixels']
+                collected_attributes.append(to_collect)
+
+        all_atts_together = combine_attributes(collected_attributes)
+        generate_picture(name=a,
+                         base_with_background=base_with_back,
+                         attributes_pixels=all_atts_together)
