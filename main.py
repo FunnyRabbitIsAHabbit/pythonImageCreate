@@ -38,6 +38,9 @@ with open('colors.data') as x:
 colors = list(z.keys())
 # len(colors) = 2331
 
+with open('used.data') as x:
+    used_combinations = json.load(x)
+
 
 def change_background(base_pic, new_pixels, find_pixel=None):
     """
@@ -128,16 +131,14 @@ def generate_and_save_picture(name, base_with_background, attributes_pixels):
     :return:
     """
 
+    global used_combinations
+
     base_with_attributes = set_attributes(base_with_background,
                                           attributes_pixels)
-    with open('used.data') as x:
-        used_combinations = json.load(x)
-        print(len(used_combinations['used']))
+
     if list(map(list, base_with_attributes)) not in used_combinations['used']:
         used_combinations['used'].append(base_with_attributes)
-        print(len(used_combinations['used']))
-        with open('used.data', 'w') as x:
-            json.dump(used_combinations, x, indent=4)
+
         main(name=name,
              **base_with_attributes)
 
@@ -289,8 +290,8 @@ def combine_attributes(collection):
 if __name__ == '__main__':
 
     atts = list()
-    n = 10
-    n_pictures = 10
+    n = 100000
+    n_pictures = 1000 - 415
     for _ in range(n):
         for i in range(1, len(ATTRIBUTES_GROUNDHOG) + 1):
             samp = random.sample(ATTRIBUTES_GROUNDHOG, i)
@@ -336,6 +337,9 @@ if __name__ == '__main__':
                 collected_attributes.append(to_collect)
 
         all_atts_together = combine_attributes(collected_attributes)
-        generate_and_save_picture(name=a + 1,
+        generate_and_save_picture(name=a + 1 + 415,
                                   base_with_background=base_with_back,
                                   attributes_pixels=all_atts_together)
+
+    with open('used.data', 'w') as x:
+        json.dump(used_combinations, x, indent=4)
