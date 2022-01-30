@@ -9,6 +9,7 @@ Version: 1.0
 """
 
 import json
+import pprint
 import random
 from statistics import mean
 
@@ -280,7 +281,6 @@ def combine_attributes(collection):
 
 
 if __name__ == '__main__':
-    y = get_pic()
 
     atts = list()
     n = 10
@@ -291,18 +291,17 @@ if __name__ == '__main__':
             atts.append(samp)
 
     atts = random.sample(atts, n_pictures)
-
-    for lst in atts:
-        while len([x for x in lst
-                   if 'hat' in x]) > 1:
-            for item in [x for x in lst
-                         if 'hat' in x]:
-                lst.pop(lst.index(item))
-        while len([x for x in lst
-                   if 'necklace' in x]) > 1:
-            for item in [x for x in lst
-                         if 'necklace' in x]:
-                lst.pop(lst.index(item))
+    for index in range(len(atts)):
+        while len([x for x in atts[index] if 'hat' in x]) > 1:
+            item = [x for x in atts[index] if 'hat' in x][0]
+            lst = atts[index]
+            lst.pop(lst.index(item))
+            atts[index] = lst
+        while len([x for x in atts[index] if 'necklace' in x]) > 1:
+            item = [x for x in atts[index] if 'necklace' in x][0]
+            lst = atts[index]
+            lst.pop(lst.index(item))
+            atts[index] = lst
 
     for a in range(len(atts)):
         if 'tux' in atts[a]:
@@ -313,9 +312,11 @@ if __name__ == '__main__':
         collected_attributes = list()
         if 'gradient' not in atts[a]:
             color = random.sample(colors, 1)[0]
+            y = get_pic()
             base_with_back = choose_background(y, color1=color)
         else:
             col1, col2 = random.sample(colors, 2)
+            y = get_pic()
             base_with_back = choose_background(y, gradient=True,
                                                color1=col1, color2=col2)
 
