@@ -33,11 +33,9 @@ attributes_compatibility.update({x: [y for y in ATTRIBUTES_GROUNDHOG
                                  if 'necklace' in x})
 
 with open('colors.data') as x:
-    y = json.load(x)
+    z = json.load(x)
 
-colors = list(y.keys())
-
-
+colors = list(z.keys())
 # len(colors) = 2331
 
 
@@ -132,8 +130,16 @@ def generate_and_save_picture(name, base_with_background, attributes_pixels):
 
     base_with_attributes = set_attributes(base_with_background,
                                           attributes_pixels)
-    main(name=name,
-         **base_with_attributes)
+    with open('used.data') as x:
+        used_combinations = json.load(x)
+        print(len(used_combinations['used']))
+    if list(map(list, base_with_attributes)) not in used_combinations['used']:
+        used_combinations['used'].append(base_with_attributes)
+        print(len(used_combinations['used']))
+        with open('used.data', 'w') as x:
+            json.dump(used_combinations, x, indent=4)
+        main(name=name,
+             **base_with_attributes)
 
 
 def restrictions(pixel_main, pixel_in_test):
@@ -305,8 +311,8 @@ if __name__ == '__main__':
 
     for a in range(len(atts)):
         if 'tux' in atts[a]:
-            if atts[a][-1] != 'tux':
-                i1, i2 = atts[a].index('tux'), -1
+            if atts[a][0] != 'tux':
+                i1, i2 = atts[a].index('tux'), 0
                 atts[a][i2], atts[a][i1] = atts[a][i1], atts[a][i2]
 
         collected_attributes = list()
