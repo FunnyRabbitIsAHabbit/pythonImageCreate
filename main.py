@@ -1,13 +1,16 @@
 """
 Project: Create simple images
 
+@author: Stanislav Ermokhin
+
+GitHub: https://github.com/FunnyRabbitIsAHabbit
+
 File: main
 
-Developer: Stanislav Ermokhin
-
-Version: 1.0
+Version: 2.0
 """
 
+import itertools
 import json
 import os
 import random
@@ -38,11 +41,80 @@ with open('colors.data') as x:
 colors = list(z.keys())
 # len(colors) = 2331
 
-with open('used.data') as x:
+with open('production_used.json') as x:
     used_combinations = json.load(x)
 
-with open('meta.json') as x:
+with open('production_meta.json') as x:
     metadata = json.load(x)
+
+
+def multiply_iterable(it1, number):
+    """
+
+    :param it1: iterable
+    :param number: float or int
+    :return: iterable
+    """
+
+    return [x * number for x in it1]
+
+
+def add_iterables(it1, it2):
+    """
+
+    :param it1: iterable
+    :param it2: iterable
+    :return: iterable
+    """
+
+    return [x + y for x, y in zip(it1, it2)]
+
+
+def compute_difference(it1: tuple, it2: tuple) -> tuple:
+    """
+    Compute difference (first iterable minus second)
+
+    :param it1: tuple RGBA as (r, g, b, a)
+    :param it2: tuple RGBA as (r, g, b, a)
+    :return: tuple as (delta_r, delta_g, delta_b, delta_a)
+    """
+
+    return tuple([x1 - x2 for x1, x2 in zip(it1, it2)])
+
+
+def compare_colors(cols1,
+                   cols2,
+                   acceptible_deviation=0):
+    """
+    Check, if two colors' deviation from one another
+    matches another pair's deviation
+
+    :param cols1: (tuple RGBA, tuple RGBA)
+    :param cols2: (tuple RGBA, tuple RGBA)
+    :param acceptible_deviation: float – as +- factor for comparison purposes
+    default = 0.0
+    :return: bool – True if there's a match, else – False
+    """
+
+    diff1 = compute_difference(*cols1)
+    diff2 = compute_difference(*cols2)
+
+    if acceptible_deviation and acceptible_deviation >= 1:
+        dev = abs(int(acceptible_deviation))
+        rng = range(1, dev + 1)
+        diffs1 = diffs2 = set()
+
+        places_for_dev = itertools.product((0, 1, -1), repeat=4)
+
+        for tup in places_for_dev:
+            for dev_i in rng:
+                deviation_tup = tuple(multiply_iterable(tup, dev_i))
+                diffs1.add(tuple(add_iterables(diff1, deviation_tup)))
+
+        return diff2 in diffs1
+
+    else:
+        return diff1 == diff2
 
 
 def change_background(base_pic, new_pixels, find_pixel=None):
@@ -151,8 +223,11 @@ def generate_and_save_picture(name, base_with_background, attributes_pixels,
                          **base_with_attributes)
         metadata['nft'].append({'file_path': full_path,
                                 'nft_name': f'Groundhog #{name}',
-                                'description': 'Groundhog Collection',
-                                'properties': chosen_attributes})
+                                'description': 'Groundhogs Collection',
+                                'collection': 'Groundhogs',
+                                'properties': chosen_attributes,
+                                'blockchain': 'Polygon',
+                                'price': 0.001})
 
 
 def restrictions(pixel_main, pixel_in_test):
@@ -349,13 +424,13 @@ if __name__ == '__main__':
                 collected_attributes.append(to_collect)
 
         all_atts_together = combine_attributes(collected_attributes)
-        generate_and_save_picture(name=a + 1 + 1000,
+        generate_and_save_picture(name=a + 1,
                                   base_with_background=base_with_back,
                                   attributes_pixels=all_atts_together,
                                   chosen_attributes=atts[a])
 
-    with open('used.data', 'w') as x:
+    with open('production_used.json', 'w') as x:
         json.dump(used_combinations, x, indent=4)
 
-    with open('meta.json', 'w') as x:
+    with open('production_meta.json', 'w') as x:
         json.dump(metadata, x, indent=4)
